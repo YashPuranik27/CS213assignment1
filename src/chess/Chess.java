@@ -60,7 +60,34 @@ public class Chess {
     /**
      * This method should reset the game, and start from scratch.
      */
+    static ArrayList<ReturnPiece> currentBoardState;
     public static void start() {
-        /* FILL IN THIS METHOD */
+        currentBoardState = new ArrayList<>();
+
+        // White Pieces
+        for(ReturnPiece.PieceFile file: ReturnPiece.PieceFile.values()) {
+            // White Pawns
+            ReturnPiece whitePawn = new ReturnPiece();
+            whitePawn.pieceType = ReturnPiece.PieceType.WP;
+            whitePawn.pieceFile = file;
+            whitePawn.pieceRank = 2;
+            currentBoardState.add(whitePawn);
+        }
+
+        // Black Pieces
+        for(ReturnPiece.PieceFile file: ReturnPiece.PieceFile.values()) {
+            // Black Pawns
+            ReturnPiece blackPawn = new ReturnPiece();
+            blackPawn.pieceType = ReturnPiece.PieceType.BP;
+            blackPawn.pieceFile = file;
+            blackPawn.pieceRank = 7;
+            currentBoardState.add(blackPawn);
+        }
+
+        // Print the initialized board.
+        PlayChess.printBoard(currentBoardState);
     }
+
+        /* FILL IN THIS METHOD */
+
 }
