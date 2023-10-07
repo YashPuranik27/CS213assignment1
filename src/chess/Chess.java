@@ -172,7 +172,7 @@ public class Chess {
     private static boolean checkLegal(String move){
         //Let's assume that an unexpected input also counts as an illegal move
         Pattern pattern = Pattern.compile("[a-h][1-8] [a-h][1-8]", Pattern.CASE_INSENSITIVE);
-        Matcher match = pattern.matcher(move);
+        Matcher match = pattern.matcher(move.trim());
 
         if(!match.find())
             return false;
