@@ -72,11 +72,13 @@ public class Chess {
         if(!checkLegal(move))
             return illegal;
 
-        executeMove(move);
+
+        if(doesMoveCheckPlayer(currentPlayer, findPiece(currentBoardState, "" + move.charAt(0) + move.charAt(1)), move.charAt(3) + "" + move.charAt(4)))
+            return illegal;
 
         ReturnPlay normalRP = new ReturnPlay();
-        //normalRP.message = ...;
-        normalRP.piecesOnBoard = currentBoardState;
+
+        executeMove(move);
 
         if(isCheckMate()){
             if(currentPlayer == Player.white)
@@ -85,6 +87,11 @@ public class Chess {
                 normalRP.message = ReturnPlay.Message.CHECKMATE_BLACK_WINS;
         } else if(isCheck())
             normalRP.message = ReturnPlay.Message.CHECK;
+
+
+
+        //normalRP.message = ...;
+        normalRP.piecesOnBoard = currentBoardState;
 
         if(turnNumber == 1)
             pawnMaxMovement = 1;
@@ -103,27 +110,8 @@ public class Chess {
         return normalRP;
     }
 
-    private static void executeMove(String move){
-        ReturnPiece start = findPiece(currentBoardState, move.substring(0,2)); //Should never be null
-        ReturnPiece dest = findPiece(currentBoardState, move.substring(3));
-        for(int i = 0; i < currentBoardState.size(); i++){
-            ReturnPiece piece = currentBoardState.get(i);
-            System.out.println("DEBUG " + move.substring(0,2));
-            if(piece.pieceRank == start.pieceRank &&
-                    piece.pieceFile == start.pieceFile)
-                currentBoardState.remove(piece);
-
-            if(dest != null)
-                if(piece.pieceRank == dest.pieceRank && piece.pieceFile == dest.pieceFile)
-                    currentBoardState.remove(findPiece(currentBoardState, move.substring(3)));
-        }
-
-        ReturnPiece newPiece = new ReturnPiece();
-        newPiece.pieceRank = Character.getNumericValue(move.charAt(4));
-        newPiece.pieceFile = ReturnPiece.PieceFile.valueOf(move.charAt(3)+"");
-        newPiece.pieceType = start.pieceType;
-
-        currentBoardState.add(newPiece);
+    private static Boolean executeMove(String move){
+        return executeMove(currentBoardState, move);
     }
 
     private static int fileToInt(String file){
@@ -159,7 +147,11 @@ public class Chess {
                 in.pieceType == ReturnPiece.PieceType.WK ||
                 in.pieceType == ReturnPiece.PieceType.WP);
     }
+
     private static boolean checkLegal(String move){
+        return checkLegal(move, currentPlayer, currentBoardState);
+    }
+    private static boolean checkLegal(String move, Player playerIn, ArrayList<ReturnPiece> boardIn){
         //Let's assume that an unexpected input also counts as an illegal move
         Pattern pattern = Pattern.compile("[a-h][1-8] [a-h][1-8]", Pattern.CASE_INSENSITIVE);
         Matcher match = pattern.matcher(move.trim());
@@ -171,27 +163,27 @@ public class Chess {
         // - Consistent with that piece's rules
         // - Consistent with the player's color
         // - Not onto another piece of the same color
-        ReturnPiece pieceInPlay = findPiece(currentBoardState, "" + move.charAt(0) + move.charAt(1));
-        ReturnPiece pieceDestination = findPiece(currentBoardState, "" + move.charAt(3) + move.charAt(4));
+        ReturnPiece pieceInPlay = findPiece(boardIn, "" + move.charAt(0) + move.charAt(1));
+        ReturnPiece pieceDestination = findPiece(boardIn, "" + move.charAt(3) + move.charAt(4));
 
         if(pieceInPlay == null)
             return false;
 
         //Check if white is attempting to move black's pieces
-        if(currentPlayer == Player.white && isBlack(pieceInPlay))
+        if(playerIn == Player.white && isBlack(pieceInPlay))
             return false;
 
         //Check if black is attempting to move white's pieces
-        if(currentPlayer == Player.black && isWhite(pieceInPlay))
+        if(playerIn == Player.black && isWhite(pieceInPlay))
             return false;
 
         if(pieceDestination != null) {
             //Check if white is attempting to move onto another white piece
-            if (currentPlayer == Player.white && isWhite(pieceDestination))
+            if (playerIn == Player.white && isWhite(pieceDestination))
                 return false;
 
             //Check if black is attempting to move onto another black piece
-            if (currentPlayer == Player.black && isBlack(pieceDestination))
+            if (playerIn == Player.black && isBlack(pieceDestination))
                 return false;
         }
 
@@ -296,8 +288,9 @@ public class Chess {
         if (piece.pieceType == ReturnPiece.PieceType.WB || piece.pieceType == ReturnPiece.PieceType.BB) {
             //If the difference between starting ranks and files and the final ranks and files are not equal, return false
             if(Math.abs(fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1))) !=
-                    Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1))))
+                    Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1)))) {
                 return false;
+            }
 
             //If any piece is in the path from start to finish (excluding final, that's checked for prior), return false
             //if starting file is behind destination, we're going right
@@ -315,9 +308,9 @@ public class Chess {
                 filePos += fileIncrement;
 
                 //This should be fine because the distMoved >1 excludes the final piece in the path (destination).
-                if(findPiece(currentBoardState, intToFile(filePos) + "" + rankPos) != null)
+                if(findPiece(currentBoardState, intToFile(filePos) + "" + rankPos) != null) {
                     return false;
-
+                }
                 distMoved--;
             }
         }
@@ -366,20 +359,31 @@ public class Chess {
 
         return true;
     }
-    private static boolean isCheck(){
-        ReturnPiece king = findKing(currentPlayer);
-        if (king == null) return false;
 
-        for (ReturnPiece piece : currentBoardState) {
-            if(isOpponent(piece) && isMovementValid(piece, "" + king.pieceFile + king.pieceRank)){
-                System.out.println("Debug: Check by piece at " + piece.pieceFile + piece.pieceRank); // DEBUGGING
+    private static boolean isCheck(){
+        return isCheck(currentBoardState, currentPlayer, false);
+    }
+    private static boolean isCheck(ArrayList<ReturnPiece> boardIn, Player playerChecked, Boolean onlyCheckPlayerChecked){
+        Player enemy = (playerChecked == Player.black ? Player.white : Player.black);
+        ReturnPiece king = findKing(playerChecked, boardIn);
+        ReturnPiece enemyKing = findKing(enemy, boardIn);
+        if (king == null || (enemyKing == null && onlyCheckPlayerChecked == false)) return true;
+
+        for (ReturnPiece piece : boardIn) {
+            if((isOpponent(piece, playerChecked) && isMovementValid(piece, "" + king.pieceFile + king.pieceRank))){
                 return true;
             }
+            if(!onlyCheckPlayerChecked) {
+                if ((!isOpponent(piece, playerChecked) && isMovementValid(piece, "" + enemyKing.pieceFile + enemyKing.pieceRank))) {
+                    return true;
+                }
+            }
         }
+
         return false;
     }
 
-    private static boolean executeMoveOnTempBoard(ArrayList<ReturnPiece> tempBoard, String move) {
+    private static boolean executeMove(ArrayList<ReturnPiece> tempBoard, String move) {
         ReturnPiece start = findPiece(tempBoard, move.substring(0,2));
         ReturnPiece dest = findPiece(tempBoard, move.substring(3));
 
@@ -391,7 +395,6 @@ public class Chess {
         ArrayList<ReturnPiece> tempBoardCopy = new ArrayList<>(tempBoard);
 
         for (ReturnPiece piece : tempBoardCopy) {
-            System.out.println("DEBUG " + move.substring(0, 2));
 
             if (piece.pieceRank == start.pieceRank && piece.pieceFile == start.pieceFile) {
                 tempBoard.remove(piece);
@@ -411,18 +414,19 @@ public class Chess {
 
         return true; // The move was executed.
     }
-
+    /*
     private static boolean isCheckOnTempBoard(ArrayList<ReturnPiece> tempBoard) {
-        ReturnPiece king = findKing(currentPlayer);
+        Player enemy = (currentPlayer == Player.black ? Player.white : Player.black);
+        ReturnPiece king = findKing(enemy);
         if (king == null) return false;
 
         for (ReturnPiece piece : tempBoard) {
-            if(isOpponent(piece) && isMovementValid(piece, "" + king.pieceFile + king.pieceRank)){
+            if(!isOpponent(piece) && isMovementValid(piece, "" + king.pieceFile + king.pieceRank)){
                 return true;
             }
         }
         return false;
-    }
+    }*/
 
     private static ReturnPiece copyReturnPiece(ReturnPiece original) {
         ReturnPiece copy = new ReturnPiece();
@@ -432,43 +436,87 @@ public class Chess {
         return copy;
     }
 
+
+    private static boolean doesMoveCheckPlayer(Player playerIn, ReturnPiece piece, String dest){
+        if(piece == null){
+            return false;
+        }
+        if (isMovementValid(piece, dest)) {
+            // Create a deep copy of currentBoardState
+
+            ArrayList<ReturnPiece> backupBoardState = new ArrayList<>(currentBoardState.size());
+            for (ReturnPiece p : currentBoardState) {
+                // Assuming a hypothetical copy constructor or clone method in your ReturnPiece class
+                backupBoardState.add(copyReturnPiece(p));
+            }
+
+            if(!checkLegal("" + piece.pieceFile + piece.pieceRank + " " + dest, playerIn, backupBoardState))
+                return true;
+
+            // Execute the move on the temporary board
+            executeMove(backupBoardState, "" + piece.pieceFile + piece.pieceRank + " " + dest);
+
+            // Check if the move resolves the check on the temporary board
+            return isCheck(backupBoardState, playerIn, true);
+        }
+        return false;
+    }
+
     private static boolean isCheckMate() {
         ReturnPiece king = findKing(currentPlayer);
         if (king == null) return false;
 
         for(ReturnPiece piece : currentBoardState) {
-            if (!isOpponent(piece)) {
+            if (isOpponent(piece)) {
                 for (int file = 0; file < 8; file++) {
                     for (int rank = 1; rank <= 8; rank++) {
                         String dest = "" + ReturnPiece.PieceFile.values()[file] + rank;
                         if (isMovementValid(piece, dest)) {
-                            System.out.println("Debug: Testing move from " + piece.pieceFile + piece.pieceRank + " to " + dest); // DEBUGGING
+
+                            if (!doesMoveCheckPlayer((currentPlayer == Player.black ? Player.white : Player.black), piece, dest)) {
+                                //We're gonna have to verify that this possible position is not also in check, because then it is checkmate
+                                return false;
+                            }
+                            /*
                             // Create a deep copy of currentBoardState
+
                             ArrayList<ReturnPiece> backupBoardState = new ArrayList<>(currentBoardState.size());
                             for (ReturnPiece p : currentBoardState) {
                                 // Assuming a hypothetical copy constructor or clone method in your ReturnPiece class
                                 backupBoardState.add(copyReturnPiece(p));
                             }
 
+                            if(!checkLegal("" + piece.pieceFile + piece.pieceRank + " " + dest, (currentPlayer == Player.black ? Player.white : Player.black), backupBoardState))
+                                continue;
+
                             // Execute the move on the temporary board
-                            executeMoveOnTempBoard(backupBoardState, "" + piece.pieceFile + piece.pieceRank + " " + dest);
+                            executeMove(backupBoardState, "" + piece.pieceFile + piece.pieceRank + " " + dest);
 
                             // Check if the move resolves the check on the temporary board
-                            boolean stillInCheck = isCheckOnTempBoard(backupBoardState);
-
+                            //If no legal moves are found, this is checkmate
+                            boolean stillInCheck = isCheck(backupBoardState, (currentPlayer == Player.black ? Player.white : Player.black), true);
                             // If the move resolves the check, it's not checkmate
-                            if (!stillInCheck) return false;
+                            if (!stillInCheck) {
+                                //We're gonna have to verify that this possible position is not also in check, because then it is checkmate
+                                return false;
+                            }
+                        }
+                        */
                         }
                     }
                 }
             }
         }
-        return true; // If no move was found to resolve the check, it's checkmate
+
+        return true;
     }
 
     private static ReturnPiece findKing(Player player){
+        return findKing(player, currentBoardState);
+    }
+    private static ReturnPiece findKing(Player player, ArrayList<ReturnPiece> boardIn){
         ReturnPiece.PieceType kingType = (player == Player.white) ? ReturnPiece.PieceType.WK : ReturnPiece.PieceType.BK;
-        for (ReturnPiece piece : currentBoardState) {
+        for (ReturnPiece piece : boardIn) {
             if (piece.pieceType == kingType) {
                 return piece;
             }
@@ -477,8 +525,12 @@ public class Chess {
     }
 
     private static boolean isOpponent(ReturnPiece piece){
+        return isOpponent(piece, currentPlayer);
+    }
+
+    private static boolean isOpponent(ReturnPiece piece, Player playerIn){
         if (piece == null) return false;
-        return (currentPlayer == Player.white && isBlack(piece)) || (currentPlayer == Player.black && isWhite(piece));
+        return (playerIn == Player.white && isBlack(piece)) || (playerIn == Player.black && isWhite(piece));
     }
 
     static ArrayList<ReturnPiece> currentBoardState;
