@@ -1,6 +1,8 @@
 package chess;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,81 +40,28 @@ class ReturnPlay {
 
 public class Chess {
 
+    ///<editor-fold desc = "Global vars">
+    /// Global Vars
+
     enum Player { white, black }
     static Player currentPlayer = Player.white; //White goes first
 
     private static int turnNumber = 0;
-    public static ReturnPlay play(String move) {
 
-        ReturnPlay exiting = new ReturnPlay();
+    private static boolean bqrMoved = false; //black queen's rook
+    private static boolean bkrMoved = false; //black king's rook
+    private static boolean wqrMoved = false; //white queen's rook
+    private static boolean wkrMoved = false; //white king's rook
 
-        if(move.equalsIgnoreCase("resign")){
-            if(currentPlayer == Player.white)
-                exiting.message = ReturnPlay.Message.RESIGN_BLACK_WINS;
-            else
-                exiting.message = ReturnPlay.Message.RESIGN_WHITE_WINS;
+    private static boolean bqrMovedNew = false; //black queen's rook
+    private static boolean bkrMovedNew = false; //black king's rook
+    private static boolean wqrMovedNew = false; //white queen's rook
+    private static boolean wkrMovedNew = false; //white king's rook
 
-            return exiting;
-        }
+    ///</editor-fold>
 
-        boolean draw = false;
-
-        if(move.contains("draw?")){
-            draw = true;
-            exiting.message = ReturnPlay.Message.DRAW;
-
-            move = move.replace(" draw?", "");
-        }
-
-        //We're gonna first check to make sure the move is legal, if it isn't there's no point in continuing
-        ReturnPlay illegal = new ReturnPlay();
-        illegal.message = ReturnPlay.Message.ILLEGAL_MOVE;
-        illegal.piecesOnBoard = currentBoardState;
-
-        if(!checkLegal(move))
-            return illegal;
-
-
-        if(doesMoveCheckPlayer(currentPlayer, findPiece(currentBoardState, "" + move.charAt(0) + move.charAt(1)), move.charAt(3) + "" + move.charAt(4)))
-            return illegal;
-
-        ReturnPlay normalRP = new ReturnPlay();
-
-        executeMove(move);
-
-        if(isCheckMate()){
-            if(currentPlayer == Player.white)
-                normalRP.message = ReturnPlay.Message.CHECKMATE_WHITE_WINS;
-            else
-                normalRP.message = ReturnPlay.Message.CHECKMATE_BLACK_WINS;
-        } else if(isCheck())
-            normalRP.message = ReturnPlay.Message.CHECK;
-
-
-
-        //normalRP.message = ...;
-        normalRP.piecesOnBoard = currentBoardState;
-
-        if(turnNumber == 1)
-            pawnMaxMovement = 1;
-
-        if(currentPlayer == Player.white)
-            currentPlayer = Player.black;
-        else
-            currentPlayer = Player.white;
-
-        if(currentPlayer == Player.black) //At the end of black's move, it's the next turn/round
-            turnNumber++;
-
-        if(draw)
-            return exiting;
-
-        return normalRP;
-    }
-
-    private static Boolean executeMove(String move){
-        return executeMove(currentBoardState, move);
-    }
+    ///<editor-fold desc = "Small helper funcs">
+    /// Small Helper Functions
 
     private static int fileToInt(String file){
         file = file.toLowerCase();
@@ -148,6 +97,112 @@ public class Chess {
                 in.pieceType == ReturnPiece.PieceType.WP);
     }
 
+    private static String removeRedundantWhitespace(String move){
+        if(move == null)
+            return null;
+
+        return move;
+    }
+
+    private static ReturnPiece copyReturnPiece(ReturnPiece original) {
+        ReturnPiece copy = new ReturnPiece();
+        copy.pieceType = original.pieceType;
+        copy.pieceFile = original.pieceFile;
+        copy.pieceRank = original.pieceRank;
+        return copy;
+    }
+
+    private static boolean isOpponent(ReturnPiece piece){
+        return isOpponent(piece, currentPlayer);
+    }
+
+    private static boolean isOpponent(ReturnPiece piece, Player playerIn){
+        if (piece == null) return false;
+        return (playerIn == Player.white && isBlack(piece)) || (playerIn == Player.black && isWhite(piece));
+    }
+
+
+    ///</editor-fold>
+
+    ///<editor-fold desc = "Chess funcs">
+    /// Chess Functions
+
+    public static ReturnPlay play(String move) {
+
+        move = removeRedundantWhitespace(move);
+
+        ReturnPlay exiting = new ReturnPlay();
+
+        if(move.equalsIgnoreCase("resign")){
+            if(currentPlayer == Player.white)
+                exiting.message = ReturnPlay.Message.RESIGN_BLACK_WINS;
+            else
+                exiting.message = ReturnPlay.Message.RESIGN_WHITE_WINS;
+
+            return exiting;
+        }
+
+        boolean draw = false;
+
+        if(move.contains("draw?")){
+            draw = true;
+            exiting.message = ReturnPlay.Message.DRAW;
+
+            move = move.replace(" draw?", "");
+        }
+
+        //We're gonna first check to make sure the move is legal, if it isn't there's no point in continuing
+        ReturnPlay illegal = new ReturnPlay();
+        illegal.message = ReturnPlay.Message.ILLEGAL_MOVE;
+        illegal.piecesOnBoard = currentBoardState;
+
+        if(!checkLegal(move))
+            return illegal;
+
+        if(doesMoveCheckPlayer(currentPlayer, findPiece(currentBoardState, "" + move.charAt(0) + move.charAt(1)), move.charAt(3) + "" + move.charAt(4)))
+            return illegal;
+
+        ReturnPlay normalRP = new ReturnPlay();
+
+        updateCastleVars(move);
+        executeMove(move);
+
+        bqrMoved = bqrMovedNew;
+        bkrMoved = bkrMovedNew;
+        wqrMoved = wqrMovedNew;
+        wkrMoved = wkrMovedNew;
+
+        if(isCheckMate()){
+            if(currentPlayer == Player.white)
+                normalRP.message = ReturnPlay.Message.CHECKMATE_WHITE_WINS;
+            else
+                normalRP.message = ReturnPlay.Message.CHECKMATE_BLACK_WINS;
+        } else if(isCheck())
+            normalRP.message = ReturnPlay.Message.CHECK;
+
+        //normalRP.message = ...;
+        normalRP.piecesOnBoard = currentBoardState;
+
+        if(turnNumber == 1)
+            pawnMaxMovement = 1;
+
+        if(currentPlayer == Player.white)
+            currentPlayer = Player.black;
+        else
+            currentPlayer = Player.white;
+
+        if(currentPlayer == Player.black) //At the end of black's move, it's the next turn/round
+            turnNumber++;
+
+        if(draw)
+            return exiting;
+
+        return normalRP;
+    }
+
+    private static ArrayList<ReturnPiece> executeMove(String move){
+        return executeMove(currentBoardState, move);
+    }
     private static boolean checkLegal(String move){
         return checkLegal(move, currentPlayer, currentBoardState);
     }
@@ -191,6 +246,14 @@ public class Chess {
         if(!isMovementValid(pieceInPlay, "" + move.charAt(3) + move.charAt(4)))
             return false;
 
+        //Check promotion logic
+        if(isPromotion(findPiece(boardIn, move.substring(0,2)), move.charAt(3) + "" + move.charAt(4))){
+            if(move.length() >= 7)
+                if(move.charAt(6) != 'B' && move.charAt(6) != 'Q' && move.charAt(6) != 'R' && move.charAt(6) != 'N' &&
+                        move.charAt(6) != 'b' && move.charAt(6) != 'q' && move.charAt(6) != 'r' && move.charAt(6) != 'n')
+                    return false;
+        }
+
         return true;
     }
 
@@ -204,7 +267,16 @@ public class Chess {
         return null;
     }
     private static int pawnMaxMovement = 2;
+
+    private static boolean isPromotion(ReturnPiece piece, String destination){
+        return (piece.pieceType == ReturnPiece.PieceType.BP && destination.charAt(1) == '1') ||
+                (piece.pieceType == ReturnPiece.PieceType.WP && destination.charAt(1) == '8');
+    }
+
     private static boolean isMovementValid(ReturnPiece piece, String destination){
+        return isMovementValid(currentBoardState, piece, destination);
+    }
+    private static boolean isMovementValid(ArrayList<ReturnPiece> boardIn, ReturnPiece piece, String destination){
 
         //Black Pawn
         if(piece.pieceType == ReturnPiece.PieceType.BP){ //Black pawn can only move down
@@ -214,8 +286,8 @@ public class Chess {
                 return false;
 
             //if file moves over by 1 in either direction, but there is no white piece at destination, return false
-            if(Math.abs(fileToInt(destination.substring(0,1)) - fileToInt(piece.pieceFile.name())) == 1 && !isWhite(findPiece(currentBoardState, destination)))
-                return false;
+            if(Math.abs(fileToInt(destination.substring(0,1)) - fileToInt(piece.pieceFile.name())) == 1 && isWhite(findPiece(boardIn, destination)))
+                return true;
 
             //otherwise if file moves, return false
             if(destination.charAt(0) != piece.pieceFile.name().charAt(0))
@@ -230,8 +302,8 @@ public class Chess {
                 return false;
 
             //if file moves over by 1 in either direction, but there is no black piece at destination, return false
-            if(Math.abs(fileToInt(destination.substring(0,1)) - fileToInt(piece.pieceFile.name())) == 1 && !isBlack(findPiece(currentBoardState, destination)))
-                return false;
+            if(Math.abs(fileToInt(destination.substring(0,1)) - fileToInt(piece.pieceFile.name())) == 1 && isBlack(findPiece(boardIn, destination)))
+                return true;
 
             //if file moves more than 1, return false
             if(destination.charAt(0) != piece.pieceFile.name().charAt(0))
@@ -252,18 +324,22 @@ public class Chess {
 
             //if starting rank is less than dest, we're going up
             int rankIncrement = (piece.pieceRank - Character.getNumericValue(destination.charAt(1)) <= 0 ? 1 : -1);
-            rankIncrement = rankIncrement * (piece.pieceRank * Character.getNumericValue(destination.charAt(1)) == 0 ? 0 : 1);
+            rankIncrement = rankIncrement * (piece.pieceRank - Character.getNumericValue(destination.charAt(1)) == 0 ? 0 : 1);
             int rankPos = piece.pieceRank;
 
             //We can add the differences between rank and file together here because one of them will always be 0.
-            int distMoved = Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1)) + fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1)));
+
+            int distMoved = Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1)));
+
+            if(distMoved == 0)
+                distMoved = Math.abs(fileToInt(piece.pieceFile.name()) - Character.getNumericValue(destination.charAt(0)));
 
             while(distMoved > 1){ //My logic is telling me this should be 1, but it's maybe 0. Try 0 if it bugs.
                 rankPos += rankIncrement; //Again, one of these increments will always be 0.
                 filePos += fileIncrement;
 
                 //This should be fine because the distMoved >1 excludes the final piece in the path (destination).
-                if(findPiece(currentBoardState, intToFile(filePos) + "" + rankPos) != null)
+                if(findPiece(boardIn, intToFile(filePos) + "" + rankPos) != null)
                     return false;
 
                 distMoved--;
@@ -308,7 +384,7 @@ public class Chess {
                 filePos += fileIncrement;
 
                 //This should be fine because the distMoved >1 excludes the final piece in the path (destination).
-                if(findPiece(currentBoardState, intToFile(filePos) + "" + rankPos) != null) {
+                if(findPiece(boardIn, intToFile(filePos) + "" + rankPos) != null) {
                     return false;
                 }
                 distMoved--;
@@ -319,8 +395,32 @@ public class Chess {
         if (piece.pieceType == ReturnPiece.PieceType.WK || piece.pieceType == ReturnPiece.PieceType.BK) {
             //If rank or file change more than 1 in any direction, return false
             if(Math.abs(fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1))) > 1 ||
-                    Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1))) > 1)
-                return false;
+                    Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1))) > 1){
+
+                if(Math.abs(fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1))) == 2 &&
+                        Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1))) == 0){
+
+                    //Check if anything is in the way
+                    int fileIncrement = (fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1)) < 0 ? 1 : -1);
+                    int filePos = fileToInt(piece.pieceFile.name());
+                    for(int i = 0; i < 2; i++) {
+                        filePos += fileIncrement;;
+                        if(findPiece(boardIn, intToFile(filePos) + piece.pieceRank) != null)
+                            return false;
+                    }
+
+                    if(destination.equalsIgnoreCase("g1") && wkrMoved)
+                        return false;
+                    if(destination.equalsIgnoreCase("c1") && wqrMoved)
+                        return false;
+                    if(destination.equalsIgnoreCase("g8") && bkrMoved)
+                        return false;
+                    if(destination.equalsIgnoreCase("c8") && bqrMoved)
+                        return false;
+                }else {
+                    return false;
+                }
+            }
         }
 
         //Queen
@@ -336,21 +436,30 @@ public class Chess {
 
             //If any piece is in the path from start to finish (excluding final, that's checked for prior), return false
             //if starting file is behind destination, we're going right
-            int fileIncrement = (fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1)) < 0 ? 1 : -1);
+            int fileIncrement = (fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1)) <= 0 ? 1 : -1);
             int filePos = fileToInt(piece.pieceFile.name());
 
             //if starting rank is less than dest, we're going up
-            int rankIncrement = (piece.pieceRank - Character.getNumericValue(destination.charAt(1)) < 0 ? 1 : -1);
+            int rankIncrement = (piece.pieceRank - Character.getNumericValue(destination.charAt(1)) <= 0 ? 1 : -1);
             int rankPos = piece.pieceRank;
 
+            if(piece.pieceFile.name().equalsIgnoreCase(destination.substring(0,1)))
+                fileIncrement = 0;
+
+            if((piece.pieceRank + "").equalsIgnoreCase(destination.substring(1,2)))
+                rankIncrement = 0;
+
             int distMoved = Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1)));
+
+            if(distMoved == 0)
+                distMoved = Math.abs(fileToInt(piece.pieceFile.name()) - Character.getNumericValue(destination.charAt(0)));
 
             while(distMoved > 1){ //My logic is telling me this should be 1, but it's maybe 0. Try 0 if it bugs.
                 rankPos += rankIncrement;
                 filePos += fileIncrement;
 
                 //This should be fine because the distMoved >1 excludes the final piece in the path (destination).
-                if(findPiece(currentBoardState, intToFile(filePos) + "" + rankPos) != null)
+                if(findPiece(boardIn, intToFile(filePos) + "" + rankPos) != null)
                     return false;
 
                 distMoved--;
@@ -358,6 +467,49 @@ public class Chess {
         }
 
         return true;
+    }
+
+    private static boolean isCastle(ArrayList<ReturnPiece> tempBoard, String move){
+        if(findPiece(tempBoard, move.substring(0,2)).pieceType == ReturnPiece.PieceType.WK){
+            if(move.charAt(3) == 'g' && move.charAt(4) == '1' && !wkrMoved){
+                return true;
+            }else if(move.charAt(3) == 'c' && move.charAt(4) == '1' && !wqrMoved){
+                return true;
+            }else {
+                return false;
+            }
+        }else if(findPiece(tempBoard, move.substring(0,2)).pieceType == ReturnPiece.PieceType.BK){
+            if(move.charAt(3) == 'g' && move.charAt(4) == '8' && !bkrMoved){
+                return true;
+            }else if(move.charAt(3) == 'c' && move.charAt(4) == '8' && !bqrMoved){
+                return true;
+            }else {
+                return false;
+            }
+        }else {
+            return false;
+        }
+    }
+
+    private static void updateCastleVars(String move){
+        ReturnPiece start = findPiece(currentBoardState, move.substring(0,2));
+        ReturnPiece end = findPiece(currentBoardState, move.charAt(3) + "" + move.charAt(4));
+
+        if(end == null){
+            end = new ReturnPiece();
+            end.pieceRank = -1;
+            end.pieceType = null;
+            end.pieceFile = null;
+        }
+
+        bqrMovedNew = bqrMoved || start.pieceType == ReturnPiece.PieceType.BK || (start.pieceType == ReturnPiece.PieceType.BR && start.pieceFile.name().equalsIgnoreCase("a"))
+            || (end.pieceType == ReturnPiece.PieceType.BR && end.pieceFile.name().equalsIgnoreCase("a"));
+        bkrMovedNew = bkrMoved || start.pieceType == ReturnPiece.PieceType.BK || (start.pieceType == ReturnPiece.PieceType.BR && start.pieceFile.name().equalsIgnoreCase("h"))
+            || (end.pieceType == ReturnPiece.PieceType.BR && end.pieceFile.name().equalsIgnoreCase("h"));
+        wqrMovedNew = wqrMoved || start.pieceType == ReturnPiece.PieceType.WK || (start.pieceType == ReturnPiece.PieceType.WR && start.pieceFile.name().equalsIgnoreCase("a"))
+            || (end.pieceType == ReturnPiece.PieceType.WR && end.pieceFile.name().equalsIgnoreCase("a"));
+        wkrMovedNew = wkrMoved || start.pieceType == ReturnPiece.PieceType.WK || (start.pieceType == ReturnPiece.PieceType.WR && start.pieceFile.name().equalsIgnoreCase("h"))
+            || (end.pieceType == ReturnPiece.PieceType.WR && end.pieceFile.name().equalsIgnoreCase("h"));
     }
 
     private static boolean isCheck(){
@@ -383,26 +535,61 @@ public class Chess {
         return false;
     }
 
-    private static boolean executeMove(ArrayList<ReturnPiece> tempBoard, String move) {
+    private static ArrayList<ReturnPiece> executeMove(ArrayList<ReturnPiece> tempBoard, String move) {
         ReturnPiece start = findPiece(tempBoard, move.substring(0,2));
         ReturnPiece dest = findPiece(tempBoard, move.substring(3));
 
         if (start == null) {
-            return false; // The start piece is not found, so the move cannot be executed.
+            return null; // The start piece is not found, so the move cannot be executed.
         }
+
+        boolean doCastleLater = isCastle(tempBoard,move);
 
         // Making a copy of tempBoard to iterate over and modify tempBoard to avoid ConcurrentModificationException
         ArrayList<ReturnPiece> tempBoardCopy = new ArrayList<>(tempBoard);
+        ArrayList<ReturnPiece> toRemove = new ArrayList<>();
+        ArrayList<ReturnPiece> toAdd = new ArrayList<>();
 
-        for (ReturnPiece piece : tempBoardCopy) {
+        for (ReturnPiece piece : tempBoard) {
 
             if (piece.pieceRank == start.pieceRank && piece.pieceFile == start.pieceFile) {
-                tempBoard.remove(piece);
+                //tempBoard.remove(piece);
+                toRemove.add(piece);
             }
 
             if (dest != null && piece.pieceRank == dest.pieceRank && piece.pieceFile == dest.pieceFile) {
-                tempBoard.remove(piece);
+                //tempBoard.remove(piece);
+                toRemove.add(piece);
             }
+
+            if(doCastleLater){
+
+                if(move.charAt(3) == 'g' && piece.pieceFile == ReturnPiece.PieceFile.h && piece.pieceRank == start.pieceRank) {
+
+                    //tempBoard.remove(piece);
+                    toRemove.add(piece);
+
+                }
+                if(move.charAt(3) == 'c' && piece.pieceFile == ReturnPiece.PieceFile.a && piece.pieceRank == start.pieceRank){
+                    //tempBoard.remove(piece);
+                    toRemove.add(piece);
+                }
+            }
+        }
+
+        for (ReturnPiece p : toRemove){
+            tempBoard.remove(p);
+        }
+
+        if(doCastleLater){
+
+            ReturnPiece newPiece2 = new ReturnPiece();
+            newPiece2.pieceRank = start.pieceRank;
+            newPiece2.pieceFile = start.pieceFile;
+            newPiece2.pieceType = (isWhite(start) ? ReturnPiece.PieceType.WR : ReturnPiece.PieceType.BR);
+
+            //tempBoard.add(newPiece2);
+            toAdd.add(newPiece2);
         }
 
         ReturnPiece newPiece = new ReturnPiece();
@@ -410,9 +597,37 @@ public class Chess {
         newPiece.pieceFile = ReturnPiece.PieceFile.valueOf(move.charAt(3) + "");
         newPiece.pieceType = start.pieceType;
 
-        tempBoard.add(newPiece);
+        if(isPromotion(start, move.charAt(3) + "" + move.charAt(4))) {
+            if(move.length() >= 7){
+                switch(move.charAt(6)){
+                    case 'B':
+                    case 'b':
+                        newPiece.pieceType = (isWhite(start) ? ReturnPiece.PieceType.WB : ReturnPiece.PieceType.BB);
+                        break;
+                    case 'N':
+                    case 'n':
+                        newPiece.pieceType = (isWhite(start) ? ReturnPiece.PieceType.WN : ReturnPiece.PieceType.BN);
+                        break;
+                    case 'R':
+                    case 'r':
+                        newPiece.pieceType = (isWhite(start) ? ReturnPiece.PieceType.WR : ReturnPiece.PieceType.BR);
+                        break;
+                    default:
+                        newPiece.pieceType = (isWhite(start) ? ReturnPiece.PieceType.WQ : ReturnPiece.PieceType.BQ);
+                        break;
+                }
+            }else{
+                newPiece.pieceType = (isWhite(start) ? ReturnPiece.PieceType.WQ : ReturnPiece.PieceType.WQ);
+            }
+        }
 
-        return true; // The move was executed.
+        //tempBoard.add(newPiece);
+        toAdd.add(newPiece);
+
+        for(ReturnPiece p : toAdd){
+            tempBoard.add(p);
+        }
+        return tempBoard; // The move was executed.
     }
     /*
     private static boolean isCheckOnTempBoard(ArrayList<ReturnPiece> tempBoard) {
@@ -427,15 +642,6 @@ public class Chess {
         }
         return false;
     }*/
-
-    private static ReturnPiece copyReturnPiece(ReturnPiece original) {
-        ReturnPiece copy = new ReturnPiece();
-        copy.pieceType = original.pieceType;
-        copy.pieceFile = original.pieceFile;
-        copy.pieceRank = original.pieceRank;
-        return copy;
-    }
-
 
     private static boolean doesMoveCheckPlayer(Player playerIn, ReturnPiece piece, String dest){
         if(piece == null){
@@ -452,7 +658,6 @@ public class Chess {
 
             if(!checkLegal("" + piece.pieceFile + piece.pieceRank + " " + dest, playerIn, backupBoardState))
                 return true;
-
             // Execute the move on the temporary board
             executeMove(backupBoardState, "" + piece.pieceFile + piece.pieceRank + " " + dest);
 
@@ -524,15 +729,6 @@ public class Chess {
         return null; // This should not happen if the board is valid
     }
 
-    private static boolean isOpponent(ReturnPiece piece){
-        return isOpponent(piece, currentPlayer);
-    }
-
-    private static boolean isOpponent(ReturnPiece piece, Player playerIn){
-        if (piece == null) return false;
-        return (playerIn == Player.white && isBlack(piece)) || (playerIn == Player.black && isWhite(piece));
-    }
-
     static ArrayList<ReturnPiece> currentBoardState;
     public static void start() {
         currentBoardState = new ArrayList<>();
@@ -587,4 +783,5 @@ public class Chess {
         board.add(piece);
     }
 
+    ///</editor-fold>
 }
