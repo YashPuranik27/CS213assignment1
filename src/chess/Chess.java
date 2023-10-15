@@ -1,8 +1,6 @@
 package chess;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Currency;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -101,7 +99,7 @@ public class Chess {
         if(move == null)
             return null;
 
-        return move;
+        return move.trim().replaceAll(" +", " ");
     }
 
     private static ReturnPiece copyReturnPiece(ReturnPiece original) {
@@ -404,7 +402,7 @@ public class Chess {
                     int fileIncrement = (fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1)) < 0 ? 1 : -1);
                     int filePos = fileToInt(piece.pieceFile.name());
                     for(int i = 0; i < 2; i++) {
-                        filePos += fileIncrement;;
+                        filePos += fileIncrement;
                         if(findPiece(boardIn, intToFile(filePos) + piece.pieceRank) != null)
                             return false;
                     }
@@ -495,6 +493,9 @@ public class Chess {
         ReturnPiece start = findPiece(currentBoardState, move.substring(0,2));
         ReturnPiece end = findPiece(currentBoardState, move.charAt(3) + "" + move.charAt(4));
 
+        if(start == null)
+            return;
+
         if(end == null){
             end = new ReturnPiece();
             end.pieceRank = -1;
@@ -519,7 +520,7 @@ public class Chess {
         Player enemy = (playerChecked == Player.black ? Player.white : Player.black);
         ReturnPiece king = findKing(playerChecked, boardIn);
         ReturnPiece enemyKing = findKing(enemy, boardIn);
-        if (king == null || (enemyKing == null && onlyCheckPlayerChecked == false)) return true;
+        if (king == null || (enemyKing == null && !onlyCheckPlayerChecked)) return true;
 
         for (ReturnPiece piece : boardIn) {
             if((isOpponent(piece, playerChecked) && isMovementValid(piece, "" + king.pieceFile + king.pieceRank))){
@@ -545,8 +546,6 @@ public class Chess {
 
         boolean doCastleLater = isCastle(tempBoard,move);
 
-        // Making a copy of tempBoard to iterate over and modify tempBoard to avoid ConcurrentModificationException
-        ArrayList<ReturnPiece> tempBoardCopy = new ArrayList<>(tempBoard);
         ArrayList<ReturnPiece> toRemove = new ArrayList<>();
         ArrayList<ReturnPiece> toAdd = new ArrayList<>();
 
@@ -617,16 +616,17 @@ public class Chess {
                         break;
                 }
             }else{
-                newPiece.pieceType = (isWhite(start) ? ReturnPiece.PieceType.WQ : ReturnPiece.PieceType.WQ);
+                newPiece.pieceType = (isWhite(start) ? ReturnPiece.PieceType.WQ : ReturnPiece.PieceType.BQ);
             }
         }
 
         //tempBoard.add(newPiece);
         toAdd.add(newPiece);
 
-        for(ReturnPiece p : toAdd){
+        tempBoard.addAll(toAdd);
+        /*for(ReturnPiece p : toAdd){
             tempBoard.add(p);
-        }
+        }*/
         return tempBoard; // The move was executed.
     }
     /*
