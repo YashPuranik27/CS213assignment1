@@ -136,6 +136,7 @@ public class Chess {
         ReturnPlay exiting = new ReturnPlay();
 
         if(move.equalsIgnoreCase("resign")){
+            exiting.piecesOnBoard = currentBoardState;
             if(currentPlayer == Player.white)
                 exiting.message = ReturnPlay.Message.RESIGN_BLACK_WINS;
             else
@@ -149,7 +150,6 @@ public class Chess {
         if(move.contains("draw?")){
             draw = true;
             exiting.message = ReturnPlay.Message.DRAW;
-
             move = move.replace(" draw?", "");
         }
 
@@ -196,9 +196,10 @@ public class Chess {
             clearEPlist(Player.white);
         }
 
-        if(draw)
+        if(draw) {
+            exiting.piecesOnBoard = currentBoardState;
             return exiting;
-
+        }
         return normalRP;
     }
 
