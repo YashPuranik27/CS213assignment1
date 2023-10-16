@@ -192,10 +192,6 @@ public class Chess {
             clearEPlist(Player.white);
         }
 
-        for(ReturnPiece p : enPassantablePawns){
-            System.out.println(p.toString());
-        }
-
         if(draw)
             return exiting;
 
