@@ -168,6 +168,7 @@ public class Chess {
 
         updateCastleVars(move);
         addEnpassantablePawn(move);
+        System.out.println(isEnPassant(move));
         executeMove(move);
 
         bqrMoved = bqrMovedNew;
@@ -294,6 +295,9 @@ public class Chess {
     }
 
     private static boolean isEnPassant(String move){
+        if(Math.abs(Character.getNumericValue(move.charAt(1)) - Character.getNumericValue(move.charAt(4))) != 1)
+            return false;
+
         if((findPiece(currentBoardState, move.substring(0,2)).pieceType == ReturnPiece.PieceType.BP ||
                 findPiece(currentBoardState, move.substring(0,2)).pieceType == ReturnPiece.PieceType.WP) &&
                 move.charAt(0) != move.charAt(3) && findPiece(currentBoardState, move.charAt(0) + "" + move.charAt(4)) != null
@@ -321,7 +325,7 @@ public class Chess {
 
             //If the pawn has moved already, it can't move twice.
             //Functionally this with the previous conditional means if a pawn moved ever, it can only move 1.
-            if(Character.getNumericValue(destination.charAt(1)) - piece.pieceRank == 2 && piece.pieceRank != 2)
+            if(Character.getNumericValue(destination.charAt(1)) - piece.pieceRank == -2 && piece.pieceRank != 7)
                 return false;
 
             if(isEnPassant(""+piece.pieceFile.name()+piece.pieceRank + " " + destination) && findPiece(boardIn,destination) != null)
