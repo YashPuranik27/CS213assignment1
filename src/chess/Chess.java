@@ -44,8 +44,6 @@ public class Chess {
     enum Player { white, black }
     static Player currentPlayer = Player.white; //White goes first
 
-    private static int turnNumber = 0;
-
     private static boolean bqrMoved = false; //black queen's rook
     private static boolean bkrMoved = false; //black king's rook
     private static boolean wqrMoved = false; //white queen's rook
@@ -55,6 +53,8 @@ public class Chess {
     private static boolean bkrMovedNew = false; //black king's rook
     private static boolean wqrMovedNew = false; //white queen's rook
     private static boolean wkrMovedNew = false; //white king's rook
+
+    private static ArrayList<ReturnPiece> enPassantablePawns;
 
     ///</editor-fold>
 
@@ -163,6 +163,7 @@ public class Chess {
         ReturnPlay normalRP = new ReturnPlay();
 
         updateCastleVars(move);
+        addEnpassantablePawn(move);
         executeMove(move);
 
         bqrMoved = bqrMovedNew;
@@ -181,16 +182,19 @@ public class Chess {
         //normalRP.message = ...;
         normalRP.piecesOnBoard = currentBoardState;
 
-        if(turnNumber == 1)
-            pawnMaxMovement = 1;
 
-        if(currentPlayer == Player.white)
+        if(currentPlayer == Player.white) {
             currentPlayer = Player.black;
-        else
+            clearEPlist(Player.black); //after white moves, black has new turn so EP list can clear
+        }
+        else{
             currentPlayer = Player.white;
+            clearEPlist(Player.white);
+        }
 
-        if(currentPlayer == Player.black) //At the end of black's move, it's the next turn/round
-            turnNumber++;
+        for(ReturnPiece p : enPassantablePawns){
+            System.out.println(p.toString());
+        }
 
         if(draw)
             return exiting;
@@ -264,7 +268,39 @@ public class Chess {
         }
         return null;
     }
-    private static int pawnMaxMovement = 2;
+
+    private static void addEnpassantablePawn(String move){
+        ReturnPiece newPawnForList = new ReturnPiece();
+        newPawnForList.pieceRank = Character.getNumericValue(move.charAt(4));
+        newPawnForList.pieceFile = findPiece(currentBoardState, move.substring(0,2)).pieceFile;
+        newPawnForList.pieceType = findPiece(currentBoardState, move.substring(0,2)).pieceType;
+
+        if((findPiece(currentBoardState, move.substring(0,2)).pieceType == ReturnPiece.PieceType.BP ||
+            findPiece(currentBoardState, move.substring(0,2)).pieceType == ReturnPiece.PieceType.WP) &&
+            Math.abs(Character.getNumericValue(move.charAt(1)) - Character.getNumericValue(move.charAt(4)))== 2)
+            enPassantablePawns.add(newPawnForList);
+    }
+
+    private static void clearEPlist(Player toClear){
+        ArrayList<ReturnPiece> toRemove = new ArrayList<>();
+        for (ReturnPiece p : enPassantablePawns){
+            if(isWhite(p) && toClear == Player.white)
+                toRemove.add(p);
+            else if (isBlack(p) && toClear == Player.black)
+                toRemove.add(p);
+        }
+
+        enPassantablePawns.removeAll(toRemove);
+    }
+
+    private static boolean isEnPassant(String move){
+        if((findPiece(currentBoardState, move.substring(0,2)).pieceType == ReturnPiece.PieceType.BP ||
+                findPiece(currentBoardState, move.substring(0,2)).pieceType == ReturnPiece.PieceType.WP) &&
+                move.charAt(0) != move.charAt(3) && findPiece(currentBoardState, move.charAt(0) + "" + move.charAt(4)) != null
+                && enPassantablePawns.contains(findPiece(currentBoardState, move.charAt(0) + "" + move.charAt(4))))
+                return true;
+        return false;
+    }
 
     private static boolean isPromotion(ReturnPiece piece, String destination){
         return (piece.pieceType == ReturnPiece.PieceType.BP && destination.charAt(1) == '1') ||
@@ -279,12 +315,21 @@ public class Chess {
         //Black Pawn
         if(piece.pieceType == ReturnPiece.PieceType.BP){ //Black pawn can only move down
             //if rank moves anything greater than (-pawnMaxMovement), return false
-            if(Character.getNumericValue(destination.charAt(1)) - piece.pieceRank < -pawnMaxMovement ||
+            if(Character.getNumericValue(destination.charAt(1)) - piece.pieceRank < -2 ||
                     Character.getNumericValue(destination.charAt(1)) - piece.pieceRank > 0)
                 return false;
 
-            //if file moves over by 1 in either direction, but there is no white piece at destination, return false
-            if(Math.abs(fileToInt(destination.substring(0,1)) - fileToInt(piece.pieceFile.name())) == 1 && isWhite(findPiece(boardIn, destination)))
+            //If the pawn has moved already, it can't move twice.
+            //Functionally this with the previous conditional means if a pawn moved ever, it can only move 1.
+            if(Character.getNumericValue(destination.charAt(1)) - piece.pieceRank == 2 && piece.pieceRank != 2)
+                return false;
+
+            if(isEnPassant(""+piece.pieceFile.name()+piece.pieceRank + " " + destination) && findPiece(boardIn,destination) != null)
+                return false;
+
+            //if this is diagonal capture, or enpassant, return true
+            if((Math.abs(fileToInt(destination.substring(0,1)) - fileToInt(piece.pieceFile.name())) == 1 && isWhite(findPiece(boardIn, destination)))
+                ||isEnPassant(""+piece.pieceFile.name()+piece.pieceRank + " " + destination))
                 return true;
 
             //otherwise if file moves, return false
@@ -295,12 +340,20 @@ public class Chess {
         //White Pawn
         if(piece.pieceType == ReturnPiece.PieceType.WP){ //White pawn can only move up
             //if rank moves anything greater than (-pawnMaxMovement), return false
-            if(Character.getNumericValue(destination.charAt(1)) - piece.pieceRank > pawnMaxMovement ||
+            if(Character.getNumericValue(destination.charAt(1)) - piece.pieceRank > 2 ||
                     Character.getNumericValue(destination.charAt(1)) - piece.pieceRank < 0)
                 return false;
 
-            //if file moves over by 1 in either direction, but there is no black piece at destination, return false
-            if(Math.abs(fileToInt(destination.substring(0,1)) - fileToInt(piece.pieceFile.name())) == 1 && isBlack(findPiece(boardIn, destination)))
+            //If the pawn has moved already, it can't move twice.
+            if(Character.getNumericValue(destination.charAt(1)) - piece.pieceRank == 2 && piece.pieceRank != 2)
+                return false;
+
+            if(isEnPassant(""+piece.pieceFile.name()+piece.pieceRank + " " + destination) && findPiece(boardIn,destination) != null)
+                return false;
+
+            //if this is diagonal capture, or enpassant, return true
+            if((Math.abs(fileToInt(destination.substring(0,1)) - fileToInt(piece.pieceFile.name())) == 1 && isBlack(findPiece(boardIn, destination)))
+                    ||isEnPassant(""+piece.pieceFile.name()+piece.pieceRank + " " + destination))
                 return true;
 
             //if file moves more than 1, return false
@@ -574,6 +627,11 @@ public class Chess {
                     toRemove.add(piece);
                 }
             }
+
+            if(isEnPassant(move)){
+                if(piece.pieceFile.name().equals(move.substring(0,1)) && piece.pieceRank == Character.getNumericValue(move.charAt(4)))
+                    toRemove.add(piece);
+            }
         }
 
         for (ReturnPiece p : toRemove){
@@ -732,6 +790,7 @@ public class Chess {
     static ArrayList<ReturnPiece> currentBoardState;
     public static void start() {
         currentBoardState = new ArrayList<>();
+        enPassantablePawns = new ArrayList<>();
 
         // White Pieces
         for(ReturnPiece.PieceFile file: ReturnPiece.PieceFile.values()) {
