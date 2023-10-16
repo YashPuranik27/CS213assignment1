@@ -1,3 +1,7 @@
+///
+/// Joseph Arrigo (netID: jma396) and Yash Puranik (netID: yap13)
+///
+
 package chess;
 
 import java.util.ArrayList;
