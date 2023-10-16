@@ -387,7 +387,7 @@ public class Chess {
             int distMoved = Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1)));
 
             if(distMoved == 0)
-                distMoved = Math.abs(fileToInt(piece.pieceFile.name()) - Character.getNumericValue(destination.charAt(0)));
+                distMoved = Math.abs(fileToInt(piece.pieceFile.name()) - fileToInt(""+destination.charAt(0)));
 
             while(distMoved > 1){ //My logic is telling me this should be 1, but it's maybe 0. Try 0 if it bugs.
                 rankPos += rankIncrement; //Again, one of these increments will always be 0.
@@ -507,7 +507,7 @@ public class Chess {
             int distMoved = Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1)));
 
             if(distMoved == 0)
-                distMoved = Math.abs(fileToInt(piece.pieceFile.name()) - Character.getNumericValue(destination.charAt(0)));
+                distMoved = Math.abs(fileToInt(piece.pieceFile.name()) - fileToInt(""+destination.charAt(0)));
 
             while(distMoved > 1){ //My logic is telling me this should be 1, but it's maybe 0. Try 0 if it bugs.
                 rankPos += rankIncrement;
