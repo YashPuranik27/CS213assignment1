@@ -452,9 +452,10 @@ public class Chess {
             if(Math.abs(fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1))) > 1 ||
                     Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1))) > 1){
 
+                //Check if we're castling
                 if(Math.abs(fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1))) == 2 &&
-                        Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1))) == 0){
-
+                        Math.abs(piece.pieceRank - Character.getNumericValue(destination.charAt(1))) == 0 &&
+                        !isCheck(boardIn,(piece.pieceType == ReturnPiece.PieceType.BK ? Player.black : Player.white), true)){
                     //Check if anything is in the way
                     int fileIncrement = (fileToInt(piece.pieceFile.name()) - fileToInt(destination.substring(0,1)) < 0 ? 1 : -1);
                     int filePos = fileToInt(piece.pieceFile.name());
@@ -526,6 +527,9 @@ public class Chess {
 
     private static boolean isCastle(ArrayList<ReturnPiece> tempBoard, String move){
         if(findPiece(tempBoard, move.substring(0,2)).pieceType == ReturnPiece.PieceType.WK){
+            if(isCheck(tempBoard, Player.white, true))
+                return false;
+
             if(move.charAt(3) == 'g' && move.charAt(4) == '1' && !wkrMoved){
                 return true;
             }else if(move.charAt(3) == 'c' && move.charAt(4) == '1' && !wqrMoved){
@@ -534,6 +538,8 @@ public class Chess {
                 return false;
             }
         }else if(findPiece(tempBoard, move.substring(0,2)).pieceType == ReturnPiece.PieceType.BK){
+            if(isCheck(tempBoard, Player.black, true))
+            return false;
             if(move.charAt(3) == 'g' && move.charAt(4) == '8' && !bkrMoved){
                 return true;
             }else if(move.charAt(3) == 'c' && move.charAt(4) == '8' && !bqrMoved){
