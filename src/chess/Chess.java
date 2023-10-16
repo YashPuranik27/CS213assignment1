@@ -168,7 +168,6 @@ public class Chess {
 
         updateCastleVars(move);
         addEnpassantablePawn(move);
-        System.out.println(isEnPassant(move));
         executeMove(move);
 
         bqrMoved = bqrMovedNew;
